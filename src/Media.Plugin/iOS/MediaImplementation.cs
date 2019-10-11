@@ -95,7 +95,7 @@ namespace Plugin.Media
 				ModalPresentationStyle = options?.ModalPresentationStyle ?? MediaPickerModalPresentationStyle.FullScreen,
             };
 
-            return await GetMediaAsync(UIImagePickerControllerSourceType.PhotoLibrary, TypeImage, cameraOptions, token);
+            return await GetMediaAsync(UIImagePickerControllerSourceType.PhotoLibrary,  new[] { TypeImage },  cameraOptions, token);
         }
 
 		public async Task<List<MediaFile>> PickPhotosAsync(PickMediaOptions options = null, MultiPickerOptions pickerOptions = null, CancellationToken token = default(CancellationToken))
@@ -151,7 +151,7 @@ namespace Plugin.Media
 
 			await CheckPermissions(permissionsToCheck.ToArray());
 
-            return await GetMediaAsync(UIImagePickerControllerSourceType.Camera, TypeImage, options, token);
+            return await GetMediaAsync(UIImagePickerControllerSourceType.Camera,  new[] { TypeImage }, options, token);
         }
 
 
@@ -174,7 +174,7 @@ namespace Plugin.Media
 				await CheckPermissions(Permission.Photos);
 			}
 
-			var media = await GetMediaAsync(UIImagePickerControllerSourceType.PhotoLibrary, TypeMovie, token: token);
+			var media = await GetMediaAsync(UIImagePickerControllerSourceType.PhotoLibrary, new[] { TypeMovie },  token: token);
 
             UIApplication.SharedApplication.EndBackgroundTask(backgroundTask);
 
@@ -207,7 +207,7 @@ namespace Plugin.Media
 
 			await CheckPermissions(permissionsToCheck.ToArray());
 
-            return await GetMediaAsync(UIImagePickerControllerSourceType.Camera, TypeMovie, options, token);
+            return await GetMediaAsync(UIImagePickerControllerSourceType.Camera, new[] { TypeMovie }, options, token);
         }
 
         private UIPopoverController popover;
@@ -236,10 +236,10 @@ namespace Plugin.Media
                 throw new ArgumentException("options.Camera is not a member of CameraDevice");
         }
 
-        private static MediaPickerController SetupController(MediaPickerDelegate mpDelegate, UIImagePickerControllerSourceType sourceType, string mediaType, StoreCameraMediaOptions options = null)
+        private static MediaPickerController SetupController(MediaPickerDelegate mpDelegate, UIImagePickerControllerSourceType sourceType, string[] mediaTypes,  StoreCameraMediaOptions options = null)
         {
             var picker = new MediaPickerController(mpDelegate);
-            picker.MediaTypes = new[] { mediaType };
+            picker.MediaTypes = mediaTypes;
             picker.SourceType = sourceType;
 
             if (sourceType == UIImagePickerControllerSourceType.Camera)
@@ -255,11 +255,12 @@ namespace Plugin.Media
                         picker.CameraOverlayView = overlay as UIView;
                     }
                 }
-                if (mediaType == TypeImage)
+                if (mediaTypes.Any(type => type == TypeImage))
                 {
                     picker.CameraCaptureMode = UIImagePickerControllerCameraCaptureMode.Photo;
                 }
-                else if (mediaType == TypeMovie)
+                
+                if (mediaTypes.Any(type => type == TypeMovie))
                 {
                     var voptions = (StoreVideoOptions)options;
 
@@ -272,7 +273,7 @@ namespace Plugin.Media
             return picker;
         }
 
-        private Task<MediaFile> GetMediaAsync(UIImagePickerControllerSourceType sourceType, string mediaType, StoreCameraMediaOptions options = null, CancellationToken token = default(CancellationToken))
+        private Task<MediaFile> GetMediaAsync(UIImagePickerControllerSourceType sourceType, string[] mediaTypes, StoreCameraMediaOptions options = null, CancellationToken token = default(CancellationToken))
         {
 			
 			var viewController = GetHostViewController();
@@ -285,7 +286,7 @@ namespace Plugin.Media
             if (od != null)
                 throw new InvalidOperationException("Only one operation can be active at a time");
 
-            var picker = SetupController(ndelegate, sourceType, mediaType, options);
+            var picker = SetupController(ndelegate, sourceType, mediaTypes, options);
 
             if (UIDevice.CurrentDevice.UserInterfaceIdiom == UIUserInterfaceIdiom.Pad && sourceType == UIImagePickerControllerSourceType.PhotoLibrary)
             {
@@ -620,6 +621,70 @@ namespace Plugin.Media
 					throw new UnauthorizedAccessException($"On iOS 10 and higher you must set {description} in your Info.plist file to enable Authorization Requests for access!");
 
 			}
+		}
+		
+		public async Task<MediaFile> TakeMediaAsync(StoreVideoOptions options, CancellationToken token = default(CancellationToken))
+		{
+			if (!IsTakePhotoSupported)
+				throw new NotSupportedException();
+			if (!IsCameraAvailable)
+				throw new NotSupportedException();
+
+			CheckUsageDescription(cameraDescription);
+
+			if (options.SaveToAlbum)
+				CheckUsageDescription(photoAddDescription);
+
+			VerifyCameraOptions(options);
+
+			var permissionsToCheck = new List<Permission> { Permission.Camera };
+
+			if (options.SaveToAlbum)
+				permissionsToCheck.Add(Permission.Photos);
+
+			await CheckPermissions(permissionsToCheck.ToArray());
+
+		
+			return await GetMediaAsync(UIImagePickerControllerSourceType.Camera, new[] { TypeMovie, TypeImage }, options);
+		}
+
+		public async Task<MediaFile> PickMediaAsync(PickMediaOptions options = null, CancellationToken token = default(CancellationToken))
+		{
+
+			if (!IsPickPhotoSupported)
+				throw new NotSupportedException();
+
+			if (!IsPickVideoSupported)
+				throw new NotSupportedException();
+
+			//Does not need permission on iOS 11
+			if (!UIDevice.CurrentDevice.CheckSystemVersion(11, 0))
+			{
+				CheckUsageDescription(photoDescription);
+
+				await CheckPermissions(Permission.Photos);
+			}
+
+			var cameraOptions = new StoreCameraMediaOptions
+			{
+				PhotoSize = options?.PhotoSize ?? PhotoSize.Full,
+				CompressionQuality = options?.CompressionQuality ?? 100,
+				AllowCropping = false,
+				CustomPhotoSize = options?.CustomPhotoSize ?? 100,
+				MaxWidthHeight = options?.MaxWidthHeight,
+				RotateImage = options?.RotateImage ?? true,
+				SaveMetaData = options?.SaveMetaData ?? true,
+				SaveToAlbum = false,
+				ModalPresentationStyle = options?.ModalPresentationStyle ?? MediaPickerModalPresentationStyle.FullScreen,
+			};
+
+			var backgroundTask = UIApplication.SharedApplication.BeginBackgroundTask(() => { });
+
+			var media = await GetMediaAsync(UIImagePickerControllerSourceType.PhotoLibrary, new[] { TypeMovie, TypeImage });
+
+			UIApplication.SharedApplication.EndBackgroundTask(backgroundTask);
+
+			return media;
 		}
     }
 }

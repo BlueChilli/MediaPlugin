@@ -450,7 +450,7 @@ namespace Plugin.Media
 					return File.OpenRead(path);
 			};
 
-			return new MediaFile(path, () => File.OpenRead(path), streamGetterForExternalStorage: () => getStreamForExternalStorage(), albumPath: aPath);
+			return new MediaFile(path,  MediaType.Image, () => File.OpenRead(path), streamGetterForExternalStorage: () => getStreamForExternalStorage(), albumPath: aPath);
 		}
 
 		internal static NSDictionary SetGpsLocation(NSDictionary meta, Location location)
@@ -617,7 +617,7 @@ namespace Plugin.Media
 				}
 			}
 
-			return new MediaFile(path, () => File.OpenRead(path), albumPath: aPath);
+			return new MediaFile(path, MediaType.Video, () => File.OpenRead(path), albumPath: aPath);
 		}
 
 		private static string GetUniquePath(string type, string path, string name)

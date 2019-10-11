@@ -92,7 +92,7 @@ namespace Plugin.Media
             {
                 throw new MediaPermissionException(Permission.Storage);
             }
-            var media = await TakeMediaAsync("image/*", Intent.ActionPick, null, token);
+            var media = await TakeMediaAsync(new [] {"image/*"}, new [] {Intent.ActionPick}, null, token);
 
             if (options == null)
                 options = new PickMediaOptions();
@@ -120,7 +120,7 @@ namespace Plugin.Media
 				return null;
 			}
 
-			var medias = await TakeMediasAsync("image/*", Intent.ActionPick, new StorePickerMediaOptions { MultiPicker = true }, token);
+			var medias = await TakeMediasAsync(new [] {"image/*"}, new [] {Intent.ActionPick}, new StorePickerMediaOptions { MultiPicker = true }, token);
 
 			if (medias == null)
 				return null;
@@ -194,7 +194,7 @@ namespace Plugin.Media
 
             VerifyOptions(options);
 
-            var media = await TakeMediaAsync("image/*", MediaStore.ActionImageCapture, options, token);
+            var media = await TakeMediaAsync(new [] {"image/*"}, new [] { MediaStore.ActionImageCapture}, options, token);
 
             if (string.IsNullOrWhiteSpace(media?.Path))
                 return media;
@@ -297,7 +297,7 @@ namespace Plugin.Media
                 throw new MediaPermissionException(Permission.Storage);
             }
 
-            return await TakeMediaAsync("video/*", Intent.ActionPick, null, token);
+            return await TakeMediaAsync(new [] {"video/*"}, new [] {Intent.ActionPick}, null, token);
         }
 
         /// <summary>
@@ -317,9 +317,80 @@ namespace Plugin.Media
 
             VerifyOptions(options);
 
-            return await TakeMediaAsync("video/*", MediaStore.ActionVideoCapture, options, token);
+            return await TakeMediaAsync(new [] {"video/*"}, new [] {MediaStore.ActionVideoCapture}, options, token);
         }
 
+        public async Task<MediaFile> TakeMediaAsync(StoreVideoOptions options, CancellationToken token = default(CancellationToken))
+        {
+	        if (!IsCameraAvailable)
+		        throw new NotSupportedException();
+
+	        if (!(await RequestCameraPermissions()))
+	        {
+		        throw new MediaPermissionException(Permission.Camera);
+	        }
+
+	        VerifyOptions(options);
+
+	        return await TakeMediaAsync(new[] { "image/*", "video/*" }, new[] { MediaStore.ActionImageCapture,  MediaStore.ActionVideoCapture}, options, token);
+        }
+
+        public async Task<MediaFile> PickMediaAsync(PickMediaOptions options = null, CancellationToken token = default(CancellationToken)) {
+			
+	        if (!(await RequestStoragePermission()))
+	        {
+		        throw new MediaPermissionException(Permission.Storage);
+	        }
+
+	        var media = await TakeMediaAsync(new[] { "image/*", "video/*" }, new[] { Intent.ActionPick } , null);
+
+	        if (options == null)
+		        options = new PickMediaOptions();
+
+	        //check to see if we picked a file, and if so then try to fix orientation and resize
+	        await FixOrientationAndSizeIfHasFile(media, options);
+
+	        return media;
+        }
+
+        private async Task FixOrientationAndSizeIfHasFile(MediaFile media, PickMediaOptions options)
+        {
+	        if (!string.IsNullOrWhiteSpace(media?.Path) && media.Type == Abstractions.MediaType.Image)
+	        {
+		        try
+		        {
+			        var originalMetadata = new ExifInterface(media.Path);
+
+			        if (options.RotateImage)
+			        {
+				        await FixOrientationAndResizeAsync(media.Path, options, originalMetadata);
+			        }
+			        else
+			        {
+				        await ResizeAsync(media.Path, options, originalMetadata);
+			        }
+			        if (options.SaveMetaData && IsValidExif(originalMetadata))
+			        {
+				        try
+				        {
+					        originalMetadata?.SaveAttributes();
+				        }
+				        catch (Exception ex)
+				        {
+					        Console.WriteLine($"Unable to save exif {ex}");
+				        }
+			        }
+
+			        originalMetadata?.Dispose();
+		        }
+		        catch (Exception ex)
+		        {
+			        Console.WriteLine("Unable to check orientation: " + ex);
+		        }
+	        }
+
+        }
+        
         private readonly Context context;
         private int requestId;
 
@@ -464,12 +535,12 @@ namespace Plugin.Media
                 options.Directory = Regex.Replace(options.Directory, IllegalCharacters, string.Empty).Replace(@"\", string.Empty);
         }
 
-        private Intent CreateMediaIntent(int id, string type, string action, StoreMediaOptions options, bool tasked = true)
+        private Intent CreateMediaIntent(int id, string[] types, string[] actions, StoreMediaOptions options, bool tasked = true)
         {
             var pickerIntent = new Intent(this.context, typeof(MediaPickerActivity));
             pickerIntent.PutExtra(MediaPickerActivity.ExtraId, id);
-            pickerIntent.PutExtra(MediaPickerActivity.ExtraType, type);
-            pickerIntent.PutExtra(MediaPickerActivity.ExtraAction, action);
+            pickerIntent.PutExtra(MediaPickerActivity.ExtraType, types);
+            pickerIntent.PutExtra(MediaPickerActivity.ExtraAction, actions);
             pickerIntent.PutExtra(MediaPickerActivity.ExtraTasked, tasked);
 
             if (options != null)
@@ -523,7 +594,7 @@ namespace Plugin.Media
             return id;
         }
 
-        private Task<MediaFile> TakeMediaAsync(string type, string action, StoreMediaOptions options, CancellationToken token = default(CancellationToken))
+        private Task<MediaFile> TakeMediaAsync(string[] types, string[] actions, StoreMediaOptions options, CancellationToken token = default(CancellationToken))
         {
             var id = GetRequestId();
 
@@ -534,7 +605,7 @@ namespace Plugin.Media
             if (Interlocked.CompareExchange(ref CompletionSource, ntcs, null) != null)
                 throw new InvalidOperationException("Only one operation can be active at a time");
 
-			context.StartActivity(CreateMediaIntent(id, type, action, options));
+			context.StartActivity(CreateMediaIntent(id, types, actions, options));
 
 			void handler(object s, MediaPickedEventArgs e)
 			{
@@ -570,7 +641,7 @@ namespace Plugin.Media
 			return CompletionSource.Task;
 		}
 
-		private Task<List<MediaFile>> TakeMediasAsync(string type, string action, StoreMediaOptions options, CancellationToken token = default(CancellationToken))
+		private Task<List<MediaFile>> TakeMediasAsync(string[] types, string[] actions, StoreMediaOptions options, CancellationToken token = default(CancellationToken))
 		{
 			var id = GetRequestId();
 
@@ -581,7 +652,7 @@ namespace Plugin.Media
 			if (Interlocked.CompareExchange(ref CompletionSourceMulti, ntcs, null) != null)
 				throw new InvalidOperationException("Only one operation can be active at a time");
 
-			context.StartActivity(CreateMediaIntent(id, type, action, options));
+			context.StartActivity(CreateMediaIntent(id, types, actions, options));
 
 			void handler(object s, MediaPickedEventArgs e)
 			{
@@ -1022,6 +1093,5 @@ namespace Plugin.Media
         }
 
     }
-
-
+    
 }

@@ -175,7 +175,7 @@ namespace Plugin.Media
 			var url = asset.AssetUrl;
 			aPath = url?.AbsoluteString;
 
-			return new MediaFile(path, () => File.OpenRead(path), albumPath: aPath);
+			return new MediaFile(path, MediaType.Image, () => File.OpenRead(path), albumPath: aPath);
 		}
 
 		void CancelledPicker()

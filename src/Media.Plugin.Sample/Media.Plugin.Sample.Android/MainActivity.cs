@@ -22,15 +22,11 @@ namespace Media.Plugin.Sample.Droid
             base.OnCreate(bundle);
 			CrossCurrentActivity.Current.Init(this, bundle);
 			Xamarin.Forms.Forms.Init(this, bundle);
-			Android.Glide.Forms.Init();
+			Android.Glide.Forms.Init(this);
 			LoadApplication(new App());
         }
 
-		public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
-		{
-			PermissionsImplementation.Current.OnRequestPermissionsResult(requestCode, permissions, grantResults);
-		}
-
-	}
+		public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults) => PermissionsImplementation.Current.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
 }
 

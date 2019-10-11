@@ -4,6 +4,12 @@ using System.IO;
 
 namespace Plugin.Media.Abstractions
 {
+	public enum MediaType
+	{
+		Image,
+		Video
+	}
+
     /// <summary>
     /// Media file representations
     /// </summary>
@@ -16,12 +22,13 @@ namespace Plugin.Media.Abstractions
 		/// <param name="path"></param>
 		/// <param name="streamGetter"></param>
 		/// <param name="albumPath"></param>
-		public MediaFile(string path, Func<Stream> streamGetter, Func<Stream> streamGetterForExternalStorage = null, string albumPath = null)
+		public MediaFile(string path ,MediaType type, Func<Stream> streamGetter, Func<Stream> streamGetterForExternalStorage = null, string albumPath = null)
         {
             this.streamGetter = streamGetter;
 						this.streamGetterForExternalStorage = streamGetterForExternalStorage;
             this.path = path;
             this.albumPath = albumPath;
+            this.type = type;
         }
         /// <summary>
         /// Path to file
@@ -37,6 +44,20 @@ namespace Plugin.Media.Abstractions
             }
         }
 
+        /// <summary>
+        /// Path to file
+        /// </summary>
+        public MediaType Type
+        {
+	        get
+	        {
+		        if (isDisposed)
+			        throw new ObjectDisposedException(null);
+
+		        return type;
+	        }
+        }
+        
         /// <summary>
         /// Path to file
         /// </summary>
@@ -98,6 +119,7 @@ namespace Plugin.Media.Abstractions
 				Func<Stream> streamGetterForExternalStorage;
         string path;
         string albumPath;
+        MediaType type;
 
         void Dispose(bool disposing)
         {

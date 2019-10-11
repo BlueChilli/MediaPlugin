@@ -27,6 +27,8 @@ namespace Plugin.Media
         : Activity, Android.Media.MediaScannerConnection.IOnScanCompletedListener
     {
         internal const string ExtraPath = "path";
+        internal const string ExtraPathImage = "image_path";
+        internal const string ExtraPathVideo = "video_path";
         internal const string ExtraLocation = "location";
         internal const string ExtraType = "type";
         internal const string ExtraId = "id";
@@ -42,14 +44,18 @@ namespace Plugin.Media
         private int front;
         private string title;
         private string description;
+        private string[] types;
         private string type;
 
         /// <summary>
         /// The user's destination path.
         /// </summary>
         private Uri path;
+        private Uri imagePath;
+        private Uri videoPath;
         private bool isPhoto;
         private bool saveToAlbum;
+        private string[] actions;
         private string action;
 		private bool multiSelect;
 
@@ -68,8 +74,8 @@ namespace Plugin.Media
             outState.PutString(MediaStore.MediaColumns.Title, title);
             outState.PutString(MediaStore.Images.ImageColumns.Description, description);
             outState.PutInt(ExtraId, id);
-            outState.PutString(ExtraType, type);
-            outState.PutString(ExtraAction, action);
+            outState.PutStringArray(ExtraType, types);
+            outState.PutStringArray(ExtraAction, actions);
             outState.PutInt(MediaStore.ExtraDurationLimit, seconds);
             outState.PutLong(MediaStore.ExtraSizeLimit, size);
             outState.PutInt(MediaStore.ExtraVideoQuality, (int)quality);
@@ -81,11 +87,161 @@ namespace Plugin.Media
 			if (path != null)
                 outState.PutString(ExtraPath, path.Path);
 
+			if(imagePath != null)
+			{
+				outState.PutString(ExtraPathImage, imagePath.Path);
+			}
+			
+			if(videoPath != null)
+			{
+				outState.PutString(ExtraPathVideo, videoPath.Path);
+			}
+
             base.OnSaveInstanceState(outState);
         }
 
 		const string HuaweiManufacturer = "Huawei";
+		private bool IsPhoto(string _type) => _type == "image/*";
+		
+		private string CombineType(string[] types)
+		{
+			var combinedType = "";
+			foreach(var t in types)
+			{
+				combinedType += t + " ";
+			}
 
+			return combinedType.Trim();
+		}
+
+		private Intent CreateIntent(Bundle b, bool ran, bool isPhoto, string action, string type)
+		{
+		
+			var pickIntent = new Intent(action);
+            if (action == Intent.ActionPick)
+			{
+				if (multiSelect)
+					pickIntent.PutExtra(Intent.ExtraAllowMultiple, true);
+
+				pickIntent.SetType(type);
+			}
+			else
+            {
+                if (!isPhoto)
+                {
+					var isPixel = false;
+					try
+					{
+						var name = Settings.System.GetString(Application.Context.ContentResolver, "device_name");
+						isPixel = name.Contains("Pixel") || name.Contains("pixel");
+					}
+					catch (Exception)
+					{
+					}
+
+                    seconds = b.GetInt(MediaStore.ExtraDurationLimit, 0);
+					if (seconds != 0 && !isPixel)
+						pickIntent.PutExtra(MediaStore.ExtraDurationLimit, seconds);
+					
+                    size = b.GetLong(MediaStore.ExtraSizeLimit, 0);
+                    if (size != 0)
+                    {
+                        pickIntent.PutExtra(MediaStore.ExtraSizeLimit, size);
+                    }
+                }
+
+                saveToAlbum = b.GetBoolean(ExtraSaveToAlbum);
+                pickIntent.PutExtra(ExtraSaveToAlbum, saveToAlbum);
+
+                quality = (VideoQuality)b.GetInt(MediaStore.ExtraVideoQuality, (int)VideoQuality.High);
+                pickIntent.PutExtra(MediaStore.ExtraVideoQuality, GetVideoQuality(quality));
+
+                if (front != 0)
+                {
+                    pickIntent.UseFrontCamera();
+                }
+                else
+                {
+                    pickIntent.UseBackCamera();
+                }
+
+                if (!ran)
+                {
+                    path = GetOutputMediaFile(this, b.GetString(ExtraPath), title, isPhoto, false);
+					if(isPhoto)
+					{
+						imagePath = path;
+					}
+					else
+					{
+						videoPath = path;
+					}
+
+                    Touch();
+					
+
+					if (path.Scheme == "file")
+					{
+						try
+						{
+							var photoURI = FileProvider.GetUriForFile(this,
+																	  Application.Context.PackageName + ".fileprovider",
+																	  new Java.IO.File(path.Path));
+
+							GrantUriPermissionsForIntent(pickIntent, photoURI);
+							pickIntent.AddFlags(ActivityFlags.GrantReadUriPermission);
+							pickIntent.AddFlags(ActivityFlags.GrantWriteUriPermission);
+							pickIntent.PutExtra(MediaStore.ExtraOutput, photoURI);
+						}
+						catch (Java.Lang.IllegalArgumentException iae)
+						{
+							//Using a Huawei device on pre-N. Increased likelihood of failure...
+							if (HuaweiManufacturer.Equals(Build.Manufacturer, StringComparison.CurrentCultureIgnoreCase) && (int)Build.VERSION.SdkInt < 24)
+							{
+								pickIntent.PutExtra(MediaStore.ExtraOutput, path);
+							}
+							else
+							{
+								System.Diagnostics.Debug.WriteLine($"Unable to get file location, check and set manifest with file provider. Exception: {iae}");
+
+								throw new ArgumentException("Unable to get file location. This most likely means that the file provider information is not set in your Android Manifest file. Please check documentation on how to set this up in your project.", iae);
+							}
+						}
+						catch (Exception ex)
+						{
+							System.Diagnostics.Debug.WriteLine($"Unable to get file location, check and set manifest with file provider. Exception: {ex}");
+
+							throw new ArgumentException("Unable to get file location. This most likely means that the file provider information is not set in your Android Manifest file. Please check documentation on how to set this up in your project.", ex);
+						}
+					}
+					else
+					{
+						pickIntent.PutExtra(MediaStore.ExtraOutput, path);
+					}
+                }
+                else
+				{	
+
+					path = Uri.Parse(b.GetString(ExtraPath));
+
+					var g = b.GetString(ExtraPathImage);
+					if(!String.IsNullOrWhiteSpace(g))
+					{
+						imagePath = Uri.Parse(g);
+					}
+
+					g = b.GetString(ExtraPathVideo);
+					if(!String.IsNullOrWhiteSpace(g))
+					{
+						videoPath = Uri.Parse(g);
+					}
+				}
+            }
+
+            return pickIntent;
+		}
+
+		
         /// <summary>
         /// OnCreate
         /// </summary>
@@ -104,115 +260,34 @@ namespace Plugin.Media
 
             tasked = b.GetBoolean(ExtraTasked);
             id = b.GetInt(ExtraId, 0);
-            type = b.GetString(ExtraType);
+            types = b.GetStringArray(ExtraType);
+            type = types[0];
             front = b.GetInt(ExtraFront);
 			multiSelect = b.GetBoolean(ExtraMultiSelect);
-			if (type == "image/*")
-                isPhoto = true;
+			isPhoto = IsPhoto(type);
+			actions = b.GetStringArray(ExtraAction);
+			action = actions[0];
 
-            action = b.GetString(ExtraAction);
-            Intent pickIntent = null;
-            try
+			Intent pickIntent = null;
+            
+			try
             {
-                pickIntent = new Intent(action);
-                if (action == Intent.ActionPick)
-				{
-					if (multiSelect)
-						pickIntent.PutExtra(Intent.ExtraAllowMultiple, true);
+	            if(actions.Length > 1)
+	            {
+		            var intents = new List<Intent>();
 
-					pickIntent.SetType(type);
-				}
-				else
-                {
-                    if (!isPhoto)
-                    {
-						var isPixel = false;
-						try
-						{
-							var name = Settings.System.GetString(Application.Context.ContentResolver, "device_name");
-							isPixel = name.Contains("Pixel") || name.Contains("pixel");
-						}
-						catch (Exception)
-						{
-						}
+		            for(var i = 0; i < actions.Length; i++)
+		            {
+			            intents.Add(CreateIntent(b, ran, IsPhoto(types[i]), actions[i], types[i]));
+		            }
 
-                        seconds = b.GetInt(MediaStore.ExtraDurationLimit, 0);
-						if (seconds != 0 && !isPixel)
-							pickIntent.PutExtra(MediaStore.ExtraDurationLimit, seconds);
-						
-                        size = b.GetLong(MediaStore.ExtraSizeLimit, 0);
-                        if (size != 0)
-                        {
-                            pickIntent.PutExtra(MediaStore.ExtraSizeLimit, size);
-                        }
-                    }
-
-                    saveToAlbum = b.GetBoolean(ExtraSaveToAlbum);
-                    pickIntent.PutExtra(ExtraSaveToAlbum, saveToAlbum);
-
-                    quality = (VideoQuality)b.GetInt(MediaStore.ExtraVideoQuality, (int)VideoQuality.High);
-                    pickIntent.PutExtra(MediaStore.ExtraVideoQuality, GetVideoQuality(quality));
-
-                    if (front != 0)
-                    {
-                        pickIntent.UseFrontCamera();
-                    }
-                    else
-                    {
-                        pickIntent.UseBackCamera();
-                    }
-
-                    if (!ran)
-                    {
-                        path = GetOutputMediaFile(this, b.GetString(ExtraPath), title, isPhoto, false);
-
-                        Touch();
-						
-
-						if (path.Scheme == "file")
-						{
-							try
-							{
-								var photoURI = FileProvider.GetUriForFile(this,
-																		  Application.Context.PackageName + ".fileprovider",
-																		  new Java.IO.File(path.Path));
-
-								GrantUriPermissionsForIntent(pickIntent, photoURI);
-								pickIntent.AddFlags(ActivityFlags.GrantReadUriPermission);
-								pickIntent.AddFlags(ActivityFlags.GrantWriteUriPermission);
-								pickIntent.PutExtra(MediaStore.ExtraOutput, photoURI);
-							}
-							catch (Java.Lang.IllegalArgumentException iae)
-							{
-								//Using a Huawei device on pre-N. Increased likelihood of failure...
-								if (HuaweiManufacturer.Equals(Build.Manufacturer, StringComparison.CurrentCultureIgnoreCase) && (int)Build.VERSION.SdkInt < 24)
-								{
-									pickIntent.PutExtra(MediaStore.ExtraOutput, path);
-								}
-								else
-								{
-									System.Diagnostics.Debug.WriteLine($"Unable to get file location, check and set manifest with file provider. Exception: {iae}");
-
-									throw new ArgumentException("Unable to get file location. This most likely means that the file provider information is not set in your Android Manifest file. Please check documentation on how to set this up in your project.", iae);
-								}
-							}
-							catch (Exception ex)
-							{
-								System.Diagnostics.Debug.WriteLine($"Unable to get file location, check and set manifest with file provider. Exception: {ex}");
-
-								throw new ArgumentException("Unable to get file location. This most likely means that the file provider information is not set in your Android Manifest file. Please check documentation on how to set this up in your project.", ex);
-							}
-						}
-						else
-						{
-							pickIntent.PutExtra(MediaStore.ExtraOutput, path);
-						}
-                    }
-                    else
-                        path = Uri.Parse(b.GetString(ExtraPath));
-                }
-
-
+		            pickIntent = Intent.CreateChooser(intents[0], "Take Video or Photo");
+		            pickIntent.PutExtra(Intent.ExtraInitialIntents, value: intents.GetRange(1, intents.Count - 1).ToArray<IParcelable>());
+	            }
+	            else
+	            {
+		            pickIntent = CreateIntent(b, ran, IsPhoto(types[0]), action, action != Intent.ActionPick ? types[0] : CombineType(types));
+	            }
 
                 if (!ran)
                     StartActivityForResult(pickIntent, id);
@@ -330,7 +405,7 @@ namespace Plugin.Media
                 var aPath = originalPath;
                 if (resultPath != null && File.Exists(resultPath))
                 {
-                    var mf = new MediaFile(resultPath, () =>
+                    var mf = new MediaFile(resultPath, isPhoto ? Abstractions.MediaType.Image : Abstractions.MediaType.Video,() =>
                       {
                           return File.OpenRead(resultPath);
                       }, albumPath: aPath);
@@ -364,7 +439,7 @@ namespace Plugin.Media
 					for (var i = 0; i < clipData.ItemCount; i++)
 					{
 						var item = clipData.GetItemAt(i);
-						var media = await GetMediaFileAsync(this, requestCode, action, isPhoto, ref path, item.Uri, false);
+						var media = await GetMediaFileAsync(this, requestCode, actions[0], isPhoto, ref path, item.Uri, false);
 
 						// TODO: This can be done better.
 						mediaFiles.AddRange(media.Media);
@@ -393,7 +468,16 @@ namespace Plugin.Media
                 else
                 {
                     
-                    var e = await GetMediaFileAsync(this, requestCode, action, isPhoto, ref path, data?.Data, false);
+                    var e = await GetMediaFileAsync(this, requestCode, actions[0], isPhoto, ref path, data?.Data, false);
+                    if (isPhoto)
+                    {
+	                    imagePath = path;
+                    }
+                    else
+                    {
+	                    videoPath = path;
+                    }
+                    
                     Finish();
                     await Task.Delay(50);
                     OnMediaPicked(e);
@@ -414,6 +498,8 @@ namespace Plugin.Media
                     var resultData = new Intent();
                     resultData.PutExtra("MediaFile", data?.Data);
                     resultData.PutExtra("path", path);
+                    resultData.PutExtra("imagePath", imagePath);
+                    resultData.PutExtra("videoPath", videoPath);
                     resultData.PutExtra("isPhoto", isPhoto);
                     resultData.PutExtra("action", action);
                     resultData.PutExtra(ExtraSaveToAlbum, saveToAlbum);
@@ -514,6 +600,10 @@ namespace Plugin.Media
                 else
                     name = "VID_" + timestamp + ".mp4";
             }
+			else
+			{
+				name = Path.ChangeExtension(name,isPhoto ? ".jpg" : ".mp4");
+			}
 
             var mediaType = (isPhoto) ? Environment.DirectoryPictures : Environment.DirectoryMovies;
             var directory = saveToAlbum ? Environment.GetExternalStoragePublicDirectory(mediaType) : context.GetExternalFilesDir(mediaType);

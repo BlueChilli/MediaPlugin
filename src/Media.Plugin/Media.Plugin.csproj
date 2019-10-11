@@ -1,6 +1,7 @@
 ﻿<Project Sdk="MSBuild.Sdk.Extras/2.0.54">
 	<PropertyGroup>
-		<TargetFrameworks>netstandard1.0;netstandard2.0;MonoAndroid70;MonoAndroid71;MonoAndroid80;MonoAndroid81;MonoAndroid90;Xamarin.iOS10;uap10.0.16299;Tizen40</TargetFrameworks>
+<!-- 		<TargetFrameworks>/*netstandard1.0;*/netstandard2.0;MonoAndroid70;MonoAndroid71;MonoAndroid80;MonoAndroid81;MonoAndroid90;Xamarin.iOS10;uap10.0.16299;Tizen40</TargetFrameworks> -->
+ 		<TargetFrameworks>netstandard2.0;MonoAndroid70;MonoAndroid71;MonoAndroid80;MonoAndroid81;MonoAndroid90;Xamarin.iOS10;</TargetFrameworks>
 		<AssemblyName>Plugin.Media</AssemblyName>
 		<RootNamespace>Plugin.Media</RootNamespace>
 		<Product>$(AssemblyName) ($(TargetFramework))</Product>
@@ -57,10 +58,12 @@
 	<ItemGroup Condition=" $(TargetFramework.StartsWith('netstandard')) ">
 	</ItemGroup>
 
+	<!--
 	<ItemGroup Condition=" $(TargetFramework.StartsWith('uap10.0')) ">
 		<Compile Include="**\UWP\*.cs" />
 	</ItemGroup>
-
+-->
+	
 	<ItemGroup Condition=" $(TargetFramework.StartsWith('MonoAndroid')) ">
 		<Compile Include="**\Android\*.cs" />
 		<PackageReference Include="Xamarin.Android.Support.Core.Utils" Version="28.0.0.3" />
@@ -69,10 +72,12 @@
 	<ItemGroup Condition=" $(TargetFramework.StartsWith('Xamarin.iOS')) ">
 		<Compile Include="**\iOS\*.cs" />
 	</ItemGroup>
+	<!--
 	<ItemGroup Condition=" $(TargetFramework.StartsWith('Tizen')) ">
 		<Compile Include="**\Tizen\*.cs" />
 		<PackageReference Include="Tizen.NET" Version="4.0.0">
 			<ExcludeAssets>Runtime</ExcludeAssets>
 		</PackageReference>
 	</ItemGroup>
+	-->
 </Project>

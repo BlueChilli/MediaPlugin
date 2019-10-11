@@ -129,6 +129,47 @@ namespace Media.Plugin.Sample
 				await DisplayAlert("Video Selected", "Location: " + file.Path, "OK");
 				file.Dispose();
 			};
+
+			pickPhotoOrVideo.Clicked += async (sender, args) =>
+			{
+				await CrossMedia.Current.Initialize();
+				files.Clear();
+				if (!CrossMedia.Current.IsPickPhotoSupported || !CrossMedia.Current.IsPickVideoSupported)
+				{
+					await DisplayAlert("Videos or Images Not Supported", ":( Permission not granted to videos or photos.", "OK");
+					return;
+				}
+
+				var file = await CrossMedia.Current.PickMediaAsync();
+
+				if (file == null)
+					return;
+				await DisplayAlert(file.Type == MediaType.Image ? "Image Selected" : "Video Selected", "Location: " + file.Path, "OK");
+				file.Dispose();
+			};
+			
+			takePhotoOrVideo.Clicked += async (sender, args) =>
+			{
+				await CrossMedia.Current.Initialize();
+				files.Clear();
+				if (!CrossMedia.Current.IsCameraAvailable || !CrossMedia.Current.IsTakeVideoSupported)
+				{
+					await DisplayAlert("No Camera", ":( No camera avaialble.", "OK");
+					return;
+				}
+
+				var file = await CrossMedia.Current.TakeMediaAsync(new StoreVideoOptions
+				{
+					Directory = "Defaults",
+				});
+
+				if (file == null)
+					return;
+
+				await DisplayAlert(file.Type == MediaType.Image ? "Image Taken" :"Video Recorded" , "Location: " + file.Path, "OK");
+
+				file.Dispose();
+			};
 		}
 
 		private void Files_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
