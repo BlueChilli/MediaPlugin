@@ -24,6 +24,8 @@ namespace Plugin.Media
         /// </summary>
         public static UIStatusBarStyle StatusBarStyle { get; set; }
 
+        public static string VideoOutputPreset { get; set; }
+
 
 		///<inheritdoc/>
 		public Task<bool> Initialize() => Task.FromResult(true);
@@ -238,11 +240,13 @@ namespace Plugin.Media
 
         private static MediaPickerController SetupController(MediaPickerDelegate mpDelegate, UIImagePickerControllerSourceType sourceType, string[] mediaTypes,  StoreCameraMediaOptions options = null)
         {
-            var picker = new MediaPickerController(mpDelegate);
-            picker.MediaTypes = mediaTypes;
-            picker.SourceType = sourceType;
+	        var picker =
+		        new MediaPickerController(mpDelegate)
+		        {
+			        VideoExportPreset = VideoOutputPreset, MediaTypes = mediaTypes, SourceType = sourceType
+		        };
 
-            if (sourceType == UIImagePickerControllerSourceType.Camera)
+	        if (sourceType == UIImagePickerControllerSourceType.Camera)
             {
                 picker.CameraDevice = GetUICameraDevice(options.DefaultCamera);
                 picker.AllowsEditing = options?.AllowCropping ?? false;
