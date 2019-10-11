@@ -1,16 +1,16 @@
 {
-	"productName" : "MediaPlugin",
-	"projectName" : "MediaPlugin",
+	"productName": "Xam.Plugin.Media",
+	"projectName": "Xam.Plugin.Media",
 	"githubOwner": "bluechilli",
 	"githubRepository": "MediaPlugin",
 	"packageWhiteList": ["MediaPlugin"],
-	"solutionFile" : "../src/Media.sln",
-	"tags": [ "Xamarin"],
-	"authors" : ["James Montemagno"],
-	"copyright" : "Copyright 2018",
+	"solutionFile": "../src/Media.sln",
+	"tags": ["Xamarin"],
+	"authors": ["James Montemagno"],
+	"copyright": "Copyright 2018",
 	"iconUrl": "http://www.refractored.com/images/plugin_icon_media.png",
-	 "testProjectPath": "",	
-     "runUnitTests" : false,
-	"nuspecRootPath" : "../src/",
-	"artifactDirectory" : "../build/artifacts/"
+	"testProjectPath": "",
+	"runUnitTests": false,
+	"nuspecRootPath": "../src/",
+	"artifactDirectory": "../build/artifacts/"
 }
