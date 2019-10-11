@@ -1,9 +1,9 @@
 {
-	"productName": "Xam.Plugin.Media",
-	"projectName": "Xam.Plugin.Media",
+	"productName": "MediaPlugin",
+	"projectName": "MediaPlugin",
 	"githubOwner": "bluechilli",
 	"githubRepository": "MediaPlugin",
-	"packageWhiteList": ["MediaPlugin"],
+	"packageWhiteList": ["Xam.Plugin.Media"],
 	"solutionFile": "../src/Media.sln",
 	"tags": ["Xamarin"],
 	"authors": ["James Montemagno"],
