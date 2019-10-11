@@ -51,7 +51,7 @@
         </e>
         <e p="Media.Plugin.csproj" t="IncludeRecursive" />
         <e p="obj" t="ExcludeRecursive">
-          <e p="Release" t="Include">
+          <e p="Debug" t="Include">
             <e p="monoandroid70" t="Include">
               <e p="Media.Plugin.AssemblyInfo.cs" t="Include" />
               <e p="Resource.Designer.cs" t="Include" />
@@ -105,7 +105,7 @@
         <e p="MediaPage.xaml" t="Include" />
         <e p="MediaPage.xaml.cs" t="Include" />
         <e p="obj" t="ExcludeRecursive">
-          <e p="Release" t="Include">
+          <e p="Debug" t="Include">
             <e p="netstandard2.0" t="Include">
               <e p="Media.Plugin.Sample.AssemblyInfo.cs" t="Include" />
             </e>
@@ -201,9 +201,6 @@
         <e p="Resources" t="Include">
           <e p="LaunchScreen.storyboard" t="Include" />
         </e>
-      </e>
-      <e p="Media.Plugin.Sample/Media.Plugin.Sample.UWP" t="IncludeRecursive">
-        <e p="Media.Plugin.Sample.UWP.csproj" t="IncludeRecursive" />
       </e>
       <e p="Media.sln" t="IncludeFlat" />
       <e p="packages" t="ExcludeRecursive" />
