@@ -45,6 +45,15 @@
 		<!-- sourcelink: Include PDB in the built .nupkg -->
 		<AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
 	</PropertyGroup>
+
+	<PropertyGroup Condition=" $(TargetFramework.StartsWith('MonoAndroid')) ">
+		<TargetFrameworkIdentifier>MonoAndroid</TargetFrameworkIdentifier>
+		<MonoAndroidResourcePrefix>Resources</MonoAndroidResourcePrefix>
+		<AndroidUseLatestPlatformSdk>true</AndroidUseLatestPlatformSdk>
+		<AndroidResgenFile>Resources\Resource.designer.cs</AndroidResgenFile>
+		<AndroidResgenClass>Resource</AndroidResgenClass>
+	</PropertyGroup>
+	
 	<ItemGroup Condition=" '$(Configuration)'=='Release' ">
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-18618-05" PrivateAssets="All" />
 	</ItemGroup>
