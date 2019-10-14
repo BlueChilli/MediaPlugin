@@ -240,11 +240,17 @@ namespace Plugin.Media
 
         private static MediaPickerController SetupController(MediaPickerDelegate mpDelegate, UIImagePickerControllerSourceType sourceType, string[] mediaTypes,  StoreCameraMediaOptions options = null)
         {
-	        var picker =
-		        new MediaPickerController(mpDelegate)
-		        {
-			        VideoExportPreset = VideoOutputPreset, MediaTypes = mediaTypes, SourceType = sourceType
-		        };
+			var picker = new MediaPickerController(mpDelegate)
+			{
+				MediaTypes = mediaTypes,
+				SourceType = sourceType
+			};
+
+			if (!String.IsNullOrWhiteSpace(VideoOutputPreset))
+			{
+				picker.VideoExportPreset = VideoOutputPreset;
+			}
+
 
 	        if (sourceType == UIImagePickerControllerSourceType.Camera)
             {
