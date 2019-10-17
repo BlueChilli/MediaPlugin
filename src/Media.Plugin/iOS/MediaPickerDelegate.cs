@@ -288,7 +288,7 @@ namespace Plugin.Media
 			if (image == null)
                 return null;
 
-			var pathExtension = ((info[UIImagePickerController.ReferenceUrl] as NSUrl).PathExtension == "PNG") ? "png" : "jpg";
+			var pathExtension = ((info[UIImagePickerController.ReferenceUrl] as NSUrl)?.PathExtension == "PNG") ? "png" : "jpg";
 
 			var path = GetOutputPath(MediaImplementation.TypeImage,
 				options.Directory ?? ((IsCaptured) ? string.Empty : "temp"),
@@ -487,7 +487,8 @@ namespace Plugin.Media
 					throw new NullReferenceException("Unable to convert image to jpeg, please ensure file exists or lower quality level");
 
 				var dataProvider = new CGDataProvider(imageData);
-				var cgImageFromJpeg = CGImage.FromJPEG(dataProvider, null, false, CGColorRenderingIntent.Default);
+				var cgImageFromJpeg = pathExtension == "jpg" ?  CGImage.FromJPEG(dataProvider, null, false, CGColorRenderingIntent.Default)
+					: CGImage.FromPNG(dataProvider, null, false, CGColorRenderingIntent.Default);
 				var imageWithExif = new NSMutableData();
 				var destination = CGImageDestination.Create(imageWithExif, UTType.JPEG, 1);
 				var cgImageMetadata = new CGMutableImageMetadata();
