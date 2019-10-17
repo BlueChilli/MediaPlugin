@@ -11,10 +11,10 @@ using UIKit;
 using NSAction = System.Action;
 using ImageIO;
 using MobileCoreServices;
-using System.Drawing;
 using System.Collections.Generic;
 using System.Threading;
 using System.Diagnostics;
+using System.Drawing;
 
 namespace Plugin.Media
 {
